@@ -3,6 +3,14 @@
 # Exit script on any error
 set -e
 
+USER="dzhi"
+SHELL="zsh"
+TZ="Europe/Belgrade"
+LOCALE="en_US.UTF-8"
+PKGS="base linux syslinux gptfdisk neovim git sudo openssh mdadm lvm2 terminus-font $SHELL"
+HOSTNAME="arch"
+GH_USER="pentago"
+
 # Password Prompt
 prompt_for_password() {
 	read -rsp "$1: " PASSWORD
@@ -29,25 +37,25 @@ stage1() {
 # Stage 2: Base setup
 stage2() {
 	echo "Running Stage 2: Base Setup"
-	pacstrap -K /mnt base linux syslinux gptfdisk zsh neovim git sudo openssh mdadm lvm2 terminus-font
+	pacstrap -K /mnt "$PKGS"
 	genfstab -L /mnt >>/mnt/etc/fstab
 	mdadm --detail --scan >>/mnt/etc/mdadm.conf
 	cp /etc/systemd/network/*ethernet* /mnt/etc/systemd/network/
-	cp /etc/zsh/* /mnt/etc/zsh/
+	cp "/etc/$SHELL/*" "/mnt/etc/$SHELL"
 	cp "$0" /mnt
-	arch-chroot /mnt zsh
+	arch-chroot /mnt "$SHELL"
 }
 
 # Stage 3: Configuration
 stage3() {
 	echo "Running Stage 3: Configuration"
-	sed -i '/^#en_US.UTF-8 UTF-8/s/^#//' /etc/locale.gen
+	sed -i "/^#$LOCALE/s/^#//" /etc/locale.gen
 	locale-gen
-	echo "LANG=en_US.UTF-8" >/etc/locale.conf
+	echo "LANG=$LOCALE" >/etc/locale.conf
 	echo "FONT=ter-u18b" >/etc/vconsole.conf
-	ln -sf /usr/share/zoneinfo/Europe/Belgrade /etc/localtime
+	ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
 	hwclock --systohc
-	echo "arch" >/etc/hostname
+	echo "$HOSTNAME" >/etc/hostname
 	systemctl enable systemd-networkd
 	systemctl enable systemd-resolved
 	systemctl enable systemd-timesyncd
@@ -62,12 +70,12 @@ stage3() {
 # Stage 4: User Setup
 stage4() {
 	echo "Running Stage 4: User Setup"
-	useradd dzhi -m -G wheel -s /bin/zsh -U
+	useradd "$USER" -m -G wheel -s "/bin/$SHELL" -U
 	user_password=$(prompt_for_password "Enter user password")
-	echo "dzhi:$user_password" | chpasswd
-	mkdir --mode 700 /home/dzhi/.ssh
-	curl -L https://github.com/pentago.keys >/home/dzhi/.ssh/authorized_keys
-	chown -R dzhi:dzhi /home/dzhi/
+	echo "$USER:$user_password" | chpasswd
+	mkdir --mode 700 "/home/$USER/.ssh"
+	curl -L "https://github.com/$GH_USER.keys" >"/home/$USER/.ssh/authorized_keys"
+	chown -R "$USER:$USER" "/home/$USER"
 }
 
 # Function to show usage
